@@ -1,23 +1,24 @@
 /*
   Siege: http://www.neoretro.games#ab_6
-  Arduboy version 1.1
+  Arduboy version 1.2
   MADE by Neo Retro Games
   2017 - SHDWWZRD KURONOWACHAN CRIS
   License: MIT : https://opensource.org/licenses/MIT
  
-  
+  1.2 - 5/23/2017
+	changed how audio state is saved
+	changed eeprom.write to eeprom.update
+	
 */
 
 #include <EEPROM.h>
 #include <SPI.h>
 #include <Arduboy2.h>
 #include <ArduboyTones.h>
-//#include <ATMlib.h>//3006 PROGMEM - 252 RAM//
 
 Arduboy2 arduboy;
 Sprites sprites;
 ArduboyTones sound(arduboy.audio.enabled);
-//ATMsynth ATM;
 
 bool SAVE_HIGH_SCORE=true;
 
@@ -31,7 +32,7 @@ bool SAVE_HIGH_SCORE=true;
 #define STATE_GAME_PLAYING       4 //main game playing screen
 #define STATE_GAME_OVER          5 //game over text on screen, show score and level reached returns to title screen after a button clicked
 
-#define VERSION "1.1"
+#define VERSION "1.2"
 
 /////////////////////////////////////////////////////////////////////////////////
 //IMAGES
@@ -509,6 +510,7 @@ const unsigned char PROGMEM odds[] =
 };
 #define MAX_LEVEL 6
 
+const char hi_score_text[] PROGMEM = "HI SCORE:";
 #define TRAMPLED_TEXT 1
 #define KNOCKED_OUT_TEXT 2
 #define CAGED_TEXT 3
@@ -522,7 +524,7 @@ const char gameover2_text[] PROGMEM = "All that fast food\nwas worth it.";
 const char gameover3_text[] PROGMEM = "Bones can be\ntoothpicks, I suppose.";
 const char gameover4_text[] PROGMEM = "I demand to see your\nmanager. I'm sure\nthey'll be delicious.";
 
-const char story_text[] PROGMEM = "I may be a lion, but\nI know what I like:\nI want fresh meat\nfrom my favorite\nrestaurant.\nThe zoo had to close";
+const char story_text[] PROGMEM = "Leanna may be a lion,\nbut she knows what\nshe wants: She wants\nfresh meat from her\nfavorite restaurant.\nThe zoo had to close";
 
 void setup() {
   // put your setup code here, to run once:
@@ -533,12 +535,6 @@ void setup() {
 
   arduboy.begin();
 
-  //load sound state
-  if (EEPROM.read(EEPROM_AUDIO_ON_OFF)) {
-    arduboy.audio.on();
-  } else {
-    arduboy.audio.off();
-  }
   arduboy.initRandomSeed();
   Load();
   if(high_score_data.score==65535){
@@ -614,11 +610,11 @@ void loop() {
       }
       if (arduboy.justPressed(UP_BUTTON)){
         arduboy.audio.on(); 
-        EEPROM.update(EEPROM_AUDIO_ON_OFF, 1);
+        arduboy.audio.saveOnOff();
         sound.tones(SND_INTRO_MUSIC);  
       }//MOVE UP
       if (arduboy.justPressed(DOWN_BUTTON)){
-        EEPROM.update(EEPROM_AUDIO_ON_OFF, 0);
+        arduboy.audio.saveOnOff();
         arduboy.audio.off();
       }//MOVE DOWN
       if(arduboy.justPressed(A_BUTTON)){
@@ -630,7 +626,7 @@ void loop() {
       arduboy.print("LEANNA THE LION");
       
       //SOUND ON/OFF
-      if (EEPROM.read(EEPROM_AUDIO_ON_OFF)){
+      if (arduboy.audio.enabled()){
         sprites.drawSelfMasked(0,56,sound_icon,0);
       }
       //VERSION NUMBER
@@ -638,7 +634,9 @@ void loop() {
       arduboy.print(VERSION);
       //show hi score
       if(high_score_data.score>0){
-        arduboy.setCursor(52,40);
+        arduboy.setCursor(25,40);
+        arduboy.print((__FlashStringHelper*)(hi_score_text));
+        arduboy.setCursor(79,40);
         arduboy.print(high_score_data.score);
       }
       break;
@@ -1254,7 +1252,7 @@ bool Save() {
   if(SAVE_HIGH_SCORE){
     int startAddress = 984;
     for(uint16_t i=0;i<2;i++){// write the f
-      EEPROM.write(startAddress+i, *((char*)&high_score_data + i) );
+      EEPROM.update(startAddress+i, *((char*)&high_score_data + i) );
     }   
     return true;
   }
