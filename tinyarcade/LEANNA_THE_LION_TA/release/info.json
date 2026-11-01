@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "title": "Leanna The Lion",
+  "description": "Leanna may be a lion, but she knows what she likes: She wants fresh meat from her favorite restaurant. 'The zoo had to close'",
+  "version": "1.2",
+  "date": "2017-05-21",
+  "updated": "2017-06-02",
+  "genre": "Arcade",
+  "publisher": "Neo Retro Games",
+  "idea": "KURNOWACHAN",
+  "code": "SHDWWZRD",
+  "art": "SHDWWZRD",
+  "sound": "KURNOWACHAN",
+  "url": "http://neoretro.games#ab_6",
+  "sourceUrl": "http://neoretro.games#ab_6",
+  "banner": "banner.png",
+  "screenshots": [
+    {
+      "title": "Title Screen",
+      "filename": "ss_title.png"
+    },
+    {
+      "title": "Game Screen",
+      "filename": "ss_1.png"
+    },
+    {
+      "title": "Game Screen 2",
+      "filename": "ss_2.png"
+    }
+  ],
+  "binaries": [
+    {
+      "title": "Leanna the Lion",
+      "filename": "LEANNA_THE_LION_AB_V1_2.hex",
+      "device": "Arduboy"
+    }
+  ],
+  "eeprom":{
+  	"variable" : false,
+  	"start" : 984,
+  	"end" : 985
+  },
+  "youtube_video_id": "TTMwbXV7TMQ"
+}

@@ -1,0 +1,19 @@
+Story:
+The keepers can enjoy the feeding time meals. I want fresh meat.
+And every time I head out to get it, I hear "The Zoo Had To Close".
+Then I know that I'm just in time for my favorite restaurant.
+
+
+Game Over:
+Varies
+1)	What, no mint?
+	Game Over
+
+2)	All that fast food was worth it.
+	Game Over
+
+3)	Bones can be toothpicks, I suppose.
+	Game Over
+
+4)	I demand to see your manager. I'm sure they'll be delicious.
+	Game Over

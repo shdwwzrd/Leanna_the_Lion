@@ -1,0 +1,60 @@
+Lethia the Lion
+
+controls
+up and down to move the lion
+rapid push a button to move right
+player slowly moves left if a button not being pressed.
+b button makes the lion leap
+
+eat these for points:
+adult humans
+children
+elderly
+
+game enders:
+elephant
+zoo keeper/traq gun
+tranq gun on back of vehicle
+cage/trap
+
+hinders:
+monkey flings poo on path, lion slides if he hits it.
+
+
+boosts:
+hot sauce - score multiplier 2X
+
+
+
+
+
+every level lasts for 15 seconds
+
+3 levels on path, 1 behind fence, 1 on the bottom rail
+
+you can only eat what is on the path
+
+higher level means smarter humans, monkey, elephant do not get smarter
+
+
+
+
+1: 
+ nothing/15sec
+ 1 95% human 5% puddle
+ nothing/15sec
+
+2:
+ nothing/15sec
+ 1 95% human 2% cage 3% puddle
+ nothing/15sec
+
+3:
+ nothing
+ 2 95% human 2% cage 3% puddle
+ 1 50% monkey 50% nothing/3sec
+
+4:
+ nothing
+ 2 95% human, 5% elephant
+ 1 50% monkey 50% nothing/3sec

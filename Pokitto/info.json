@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "title": "Leanna The Lion",
+  "description": "Leanna may be a lion, but she knows what she likes: She wants fresh meat from her favorite restaurant. 'The zoo had to close'",
+  "date": "",
+  "genre": "Arcade",
+  "publisher": "Neo Retro Games",
+  "idea": "KURNOWACHAN",
+  "code": "SHDWWZRD",
+  "art": "SHDWWZRD",
+  "sound": "KURNOWACHAN",
+  "url": "http://neoretro.games#pokitto_Leanna_The_Lion",
+  "banner": "banner.png",
+  "screenshots": [
+    {
+      "title": "Title Screen",
+      "filename": "ss_title.png"
+    },
+    {
+      "title": "Game Screen",
+      "filename": "ss_1.png"
+    },
+    {
+      "title": "Game Screen 2",
+      "filename": "ss_2.png"
+    }
+  ],
+  "binaries": [
+    {
+      "title": "Leanna the Lion",
+      "filename": "LEANNA.bin",
+      "device": "Pokitto"
+    }
+  ],
