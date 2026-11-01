@@ -872,9 +872,9 @@ static void blit_glyph(uint8_t *buf, uint8_t stride, uint8_t x, uint8_t y, char 
   if (ch < 32 || ch > 95) return;
   gp = &bg_tiles[(uint16_t)(ch - 32) << 4];
   sft = x & 7;
-  for (r = 0; r < 7; r++) {
+  p = &buf[(uint16_t)y * stride + (x >> 3)];
+  for (r = 0; r < 7; r++, p += stride) {          /* no multiplication per row: SDCC's is a slow library call */
     g = gp[r << 1];
-    p = &buf[(uint16_t)(y + r) * stride + (x >> 3)];
     p[0] |= g >> sft;
     if (sft) p[1] |= g << (8 - sft);
   }
@@ -882,8 +882,35 @@ static void blit_glyph(uint8_t *buf, uint8_t stride, uint8_t x, uint8_t y, char 
 
 static void cell_write(uint8_t idx, const uint8_t *buf, uint8_t stride, uint8_t cx, uint8_t cy) {
   uint8_t out[16], y;
-  for (y = 0; y < 8; y++) out[y << 1] = out[(y << 1) + 1] = buf[(uint16_t)(cy * 8 + y) * stride + cx];
+  const uint8_t *p = &buf[((uint16_t)cy * stride << 3) + cx];
+  for (y = 0; y < 8; y++, p += stride) out[y << 1] = out[(y << 1) + 1] = *p;
   set_bkg_data(idx, 1, out);
+}
+
+static uint8_t wg_tile(uint8_t i);            /* defined with the new top score widget */
+
+/* Writing a tile to VRAM is slow (4 frames for the 12 scoreboard tiles), so only the cells that differ from what
+ * is already in VRAM (prev) are written. force writes everything. */
+/* returns 1 if cells that differ are left (more than limit) */
+static uint8_t cells_flush(const uint8_t *buf, uint8_t *prev, uint8_t stride, uint8_t cols, uint8_t rows,
+                           uint8_t first_tile, uint8_t widget, uint8_t force, uint8_t limit) {
+  uint8_t cx, cy, y, changed, i = 0, written = 0, pending = 0, out[16];
+  uint16_t base = 0, o;
+  for (cy = 0; cy < rows; cy++) {
+    for (cx = 0; cx < cols; cx++, i++) {
+      changed = force;
+      o = base + cx;
+      for (y = 0; y < 8 && !changed; y++, o += stride) changed = buf[o] != prev[o];
+      if (!changed) continue;
+      if (written >= limit) { pending = 1; continue; }
+      o = base + cx;
+      for (y = 0; y < 8; y++, o += stride) { out[y << 1] = out[(y << 1) + 1] = buf[o]; prev[o] = buf[o]; }
+      set_bkg_data(widget ? wg_tile(i) : first_tile + i, 1, out);
+      written++;
+    }
+    base += (uint16_t)stride << 3;
+  }
+  return pending;
 }
 
 /* The scoreboard: tile columns 7..12 of the two HUD tile rows. Its white inside is 37x9 at canvas
@@ -892,21 +919,31 @@ static void cell_write(uint8_t idx, const uint8_t *buf, uint8_t stride, uint8_t 
 #define SB_TILE 101
 static uint8_t sb_buf[16 * 6];
 
+static uint8_t sb_prev[16 * 6];
+static uint8_t sb_force, sb_dirty;
+
 static void sb_init(void) {
   uint8_t t[12], i;
+  sb_force = 1;                            /* the tiles in VRAM are unknown: write them all next time */
   for (i = 0; i < 12; i++) t[i] = SB_TILE + i;
   set_bkg_tiles(SB_COL, 0, 6, 2, t);
 }
 
 static void sb_draw(uint32_t score) {
   char num[11], *d = num;
-  uint8_t n, i, cx, cy;
+  uint8_t n, i;
   for (i = 0; i < 16 * 6; i += 2) { sb_buf[i] = sb_rows[i]; sb_buf[i + 1] = sb_rows[i + 1]; }
   n = u32_str(score, num);
   if (n > 6) { d += n - 6; n = 6; }
   for (i = 0; i < n; i++) blit_glyph(sb_buf, 6, 42 - 6 * n + 6 * i, 3, d[i]);
-  for (cy = 0; cy < 2; cy++)
-    for (cx = 0; cx < 6; cx++) cell_write(SB_TILE + cy * 6 + cx, sb_buf, 6, cx, cy);
+  sb_dirty = 1;
+}
+
+/* The tile writes are spread over the following frames (1 a frame) instead of stalling the one where the lion ate. */
+static void sb_service(uint8_t limit) {
+  if (!sb_dirty) return;
+  sb_dirty = cells_flush(sb_buf, sb_prev, 6, 6, 2, SB_TILE, 0, sb_force, limit);
+  sb_force = 0;
 }
 
 static void draw_hud(void) {
@@ -1104,6 +1141,7 @@ static void game_setup(void) {
   clear_screen();
   sb_init();
   draw_hud();
+  sb_service(255);                          /* the first time everything is written at once */
   game_state = STATE_PLAYING;
   fx_set(1);
 }
@@ -1144,6 +1182,7 @@ static void update_playing(void) {
     if (player.multiplier_timer == 0) fill_bkg_rect(14, 0, 2, 1, BG_FONT);
   }
   if (hud_dirty) draw_hud();
+  sb_service(1);
   PERF_MARK(5);
   update_sprites();
   PERF_MARK(6);
@@ -1555,7 +1594,8 @@ static uint8_t ini_pos, ini_char[3];       /* ini_char: 0..25 = A..Z */
 
 #define WG_COL 3                           /* the widget canvas is 14x3 tiles at tile column 3, row 14 */
 #define WG_ROW 14
-static uint8_t wg_buf[24 * 14];
+static uint8_t wg_buf[24 * 14], wg_prev[24 * 14];
+static uint8_t wg_force;
 static const uint8_t ini_px[3] = { 72, 83, 94 };    /* x of each letter in the widget canvas */
 #define INI_PY 6                           /* y of the letters in the canvas */
 
@@ -1563,11 +1603,11 @@ static const uint8_t ini_px[3] = { 72, 83, 94 };    /* x of each letter in the w
 static uint8_t wg_tile(uint8_t i) { return i < 39 ? 101 + i : 246 + (i - 39); }
 
 static void wg_draw(void) {
-  uint8_t i, cx, cy;
+  uint8_t i;
   for (i = 0; i < 24 * 14 / 2; i++) { wg_buf[i << 1] = widget_rows[i << 1]; wg_buf[(i << 1) + 1] = widget_rows[(i << 1) + 1]; }
   for (i = 0; i < 3; i++) blit_glyph(wg_buf, 14, ini_px[i], INI_PY, 'A' + ini_char[i]);
-  for (cy = 0; cy < 3; cy++)
-    for (cx = 0; cx < 14; cx++) cell_write(wg_tile(cy * 14 + cx), wg_buf, 14, cx, cy);
+  cells_flush(wg_buf, wg_prev, 14, 14, 3, 0, 1, wg_force, 255);
+  wg_force = 0;
 }
 
 static void wg_show(void) {
@@ -1631,6 +1671,7 @@ static void enter_over(void) {
     ini_pos = 0;
     ini_char[0] = ini_char[1] = ini_char[2] = 0;
     wg_show();
+    wg_force = 1;
     wg_draw();
     cursor_show(CURSOR_GAME_TILE);
     ini_cursor();
@@ -1701,8 +1742,12 @@ void main(void) {
   set_bkg_data(BG_LOGO, LOGO_TILES, logo_tiles);
   settings_load();
 #ifdef DEBUG_SEED_SCORES
-  { static const char s[3][3] = {{'L','E','A'},{'S','H','D'},{'K','U','R'}}; uint8_t q, k; for (q = 0; q < 3; q++) { for (k = 0; k < 3; k++) score_ini[q][k] = s[q][k]; score_val[q] = 900 - q * 300; }
-    for (q = 3; q < 8; q++) { for (k = 0; k < 3; k++) score_ini[q][k] = 'A' + q + k; score_val[q] = 200 - q * 20; } }
+  { /* sample table for screenshots */
+    static const char s[8][3] = { {'L','E','A'}, {'S','H','D'}, {'K','U','R'}, {'C','R','S'}, {'N','R','G'}, {'Z','O','O'}, {'M','O','M'}, {'D','A','D'} };
+    static const uint16_t v[8] = { 486, 412, 355, 298, 241, 187, 134, 96 };
+    uint8_t q, k;
+    for (q = 0; q < 8; q++) { for (k = 0; k < 3; k++) score_ini[q][k] = s[q][k]; score_val[q] = v[q]; }
+  }
 #endif
 
   add_VBL(fx_vbl_isr);
