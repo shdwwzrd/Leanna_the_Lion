@@ -99,6 +99,12 @@
 #define TRAMPLED_TEXT    1
 #define KNOCKED_OUT_TEXT 2
 #define CAGED_TEXT       3
+#define DEMO_TEXT        4
+
+/* -DDEMO: the demo ends the run after DEMO_LEVELS levels (15 seconds each) with a "get the full game" screen */
+#ifndef DEMO_LEVELS
+#define DEMO_LEVELS 3
+#endif
 
 /* odds per entity per 15 sec chunk: count_down_till, entity1..entity5 (4 lanes x 7 levels) */
 static const uint8_t odds[] = {
@@ -1154,6 +1160,12 @@ static void update_playing(void) {
   if (++level_frames == 900) {
     level_frames = 0;
     if (level < MAX_LEVEL) level++;
+#ifdef DEMO
+    if (level >= DEMO_LEVELS) {
+      game_over(DEMO_TEXT);
+      return;
+    }
+#endif
   }
 
   /* fences: background 1px/frame (16px period), foreground 2px/frame (32px period) */
@@ -1635,10 +1647,24 @@ static void enter_over(void) {
 
   if (gameover_type == TRAMPLED_TEXT)         text_inv_center(3, "TRAMPLED");
   else if (gameover_type == KNOCKED_OUT_TEXT) text_inv_center(3, "KNOCKED OUT");
+#ifdef DEMO
+  else if (gameover_type == DEMO_TEXT)        text_inv_center(3, "END OF DEMO");
+#endif
   else                                        text_inv_center(3, "CAGED");
 
   /* the quip, at most 4 lines of 18 characters */
+#ifdef DEMO
+  if (gameover_type == DEMO_TEXT) gameover_text_id = 4;
+#endif
   switch (gameover_text_id) {
+#ifdef DEMO
+    case 4:
+      text_inv_center(5, "LIKED IT? GET THE");
+      text_inv_center(6, "FULL GAME AT");
+      text_inv_center(7, "NEORETROGAMES");
+      text_inv_center(8, ".ITCH.IO");
+      break;
+#endif
     case 0:
       text_inv_center(6, "WHAT, NO MINT?");
       break;
